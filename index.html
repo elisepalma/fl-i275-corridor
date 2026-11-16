@@ -278,6 +278,11 @@ a.s{color:var(--accent)}
 .mk i{display:block;width:100%;height:100%;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(24,29,32,.35);box-sizing:border-box}
 .mk-square i{border-radius:1px}
 .mk-diamond i{transform:rotate(45deg) scale(.82);border-radius:1px}
+/* weight badges highlight briefly when the weighting changes */
+.grp .w{border-radius:3px;padding:0 3px;margin-left:-3px}
+.grp .w.flash{animation:wflash 1.6s ease-out}
+@keyframes wflash{0%,35%{background:var(--orange);color:var(--charcoal)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){.grp .w.flash{animation:none}}
 /* one z-index scale: map overlays 500-700, modals 900 */
 .logo{z-index:500}#drawerOpen{z-index:600}.topbar,#drawer{z-index:650}#srcPop{z-index:700}.modal{z-index:900}
 </style>
@@ -354,6 +359,7 @@ const tierOf = p => weights==='equal' ? p.tier_equal : p.tier;
 const bandOf = p => weights==='equal' ? p.band_equal : p.band_illustrative;
 const spotOf = p => weights==='equal' ? p.spot_equal : p.spot_treatment;
 const compOf = p => weights==='equal' ? p.composite_pct_equal : p.composite_pct_illustrative;
+const wOf = k => weights==='equal' ? Math.round(100/Object.keys(FAM).length) : FAM[k].w;  // weight shown for a factor in the current view
 const SPOT_T1 = !!MT.spot_as_tier1;  // short Tier 1 runs counted and drawn as Tier 1; documented in the Methodology
 const tierColor = p => spotOf(p) && !SPOT_T1 ? C.spot :tierOf(p)===1 ? (bandOf(p)==='Higher'?C.t1h:C.t1m) : TIER_C[tierOf(p)];
 const GR = PG.gap_rule;
@@ -399,7 +405,7 @@ function triPopup(p){
     let val = v==null?'no data':(FMT[f.fmt]||FMT.dec2)(v);
     if(k==='criticality' && p.detour_capped) val=`≥ ${MT.detour_cap_mi} mi (capped)`;
     const bar = pc==null?'':`<div class="pb"><div class="trk"><i class="${pc>=MT.bands[1]?'hi':''}" style="width:${Math.max(2,pc)}%"></i></div><span class="pc">${fmtPct(pc)}</span></div>`;
-    return `<div class="fr"><div class="nm">${f.label}<i>${f.w}%</i></div><div class="val">${val}</div><div class="ms">${f.short}${rankNote(k,p)} ${sups(famSrc(k,p))}</div>${bar}</div>`;
+    return `<div class="fr"><div class="nm">${f.label}<i>${wOf(k)}%</i></div><div class="val">${val}</div><div class="ms">${f.short}${rankNote(k,p)} ${sups(famSrc(k,p))}</div>${bar}</div>`;
   }).join('');
   const sf = FAM.safety ? FAM.safety.src : null;
   const kv=[];
@@ -512,7 +518,7 @@ function setGroup(key,v){const g=GROUPS.find(x=>x.key===key);
 const swatch = d => `<span class="sw ${d.pt?(d.pt==='circle'?'pt':'pt '+d.pt):''}" style="${d.pt==='ring'?'border-color:'+d.color:'background:'+(d.sw||d.color)}"></span>`;
 document.getElementById('layers').innerHTML = GROUPS.map(g=>{
   const f=g.fam?FAM[g.fam]:null, w=f?f.w:g.w, m=f?f.short:g.m;
-  return `<label class="grp"><input type="checkbox" id="cg_${g.key}"><b>${g.label}</b><span class="w ${w?'':'zero'}">${w}%</span><span class="m">${m}</span></label>`+
+  return `<label class="grp"><input type="checkbox" id="cg_${g.key}"><b>${g.label}</b><span class="w ${w?'':'zero'}" id="w_${g.key}">${w}%</span><span class="m">${m}</span></label>`+
    `<div class="items">${g.layers.length?g.layers.map(id=>`<label class="item"><input type="checkbox" id="cb_${id}">${swatch(LAYERS[id])}<span>${LAYERS[id].name}${LAYERS[id].tag==='scored'?` <span class="lsc">(used in score)</span>`:''}</span></label>${LAYERS[id].band?`<div class="bkw" id="bk_${id}" style="display:none">${bandKey(LAYERS[id])}</div>`:''}`).join(''):'<div class="none">No context layer</div>'}</div>`;
 }).join('') + `<div class="lbl" style="margin-top:4px">Reference</div>` +
   REF.map(id=>`<label class="ref"><input type="checkbox" id="cb_${id}">${swatch(LAYERS[id])}${LAYERS[id].name}</label>`).join('');
@@ -582,7 +588,8 @@ function stats(){
        `<div class="sc t2"><div class="t">Tier 2</div><div class="n">${t2mi.toFixed(1)}<small>mi</small></div><div class="d">High-priority corridor<br><b>${(t2mi/tot*100).toFixed(0)}%</b> of corridor miles<br><b>${(vt2/vmt*100).toFixed(0)}%</b> of daily traffic</div></div></div>`;
     const bw=[`<i class="sq" style="background:${C.t1h}"></i>Tier 1: ${secMi.length?secMi.map(([n,mi])=>`<b>${n}</b> ${mi.toFixed(1)} mi`).join(' · '):'none'}`,
               `<i class="sq" style="background:${C.t2}"></i>Tier 2: <b>the rest of ${PG.route_label}</b>${spot>0?`, including ${spot.toFixed(1)} mi of Tier 1 spot treatments`:''}`];
-    if(S.lens) bw.push(`District ${S.lens.district}: <b>${S.lens.t1_pct}%</b> of its ${S.lens.mi.toLocaleString()} state highway miles are Tier 1`);
+    // the district figure is computed with TDI weights, so it shows only in that view
+    if(S.lens && weights!=='equal') bw.push(`District ${S.lens.district}: <b>${S.lens.t1_pct}%</b> of its ${S.lens.mi.toLocaleString()} state highway miles are Tier 1`);
     if(weights==='equal') bw.push(`<b>${changed} of ${feats.length}</b> one-mile segments change tier vs. TDI weights`);
     h+=`<div class="hl"><div class="top"><div class="k">Where each tier applies</div></div><ul>${bw.map(i=>`<li>${i}</li>`).join('')}</ul></div>`;
     if(feats[0].k_n!=null){
@@ -617,7 +624,10 @@ function refresh(){triLayer.setStyle(triStyle);legend();stats();
   // the gap view shows its indicator layers (e.g. cameras) unless the reader has set that group by hand
   GROUPS.filter(g=>g.gap).forEach(g=>{ if(!userSet[g.key]) g.layers.filter(id=>LAYERS[id].gap).forEach(id=>setLayer(id, view==='gap')); });}
 document.querySelectorAll('#viewSeg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#viewSeg button').forEach(x=>x.classList.toggle('on',x===b));view=b.dataset.v;map.closePopup();refresh();});
-document.querySelectorAll('#wSeg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#wSeg button').forEach(x=>x.classList.toggle('on',x===b));weights=b.dataset.w;map.closePopup();refresh();});
+// weight badges in Layers follow the weighting toggle, with a brief highlight so the change is noticed
+function showWeights(flash){GROUPS.forEach(g=>{if(!g.fam)return;const el=document.getElementById('w_'+g.key);el.textContent=wOf(g.fam)+'%';
+  if(flash){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}});}
+document.querySelectorAll('#wSeg button').forEach(b=>b.onclick=()=>{const was=weights;document.querySelectorAll('#wSeg button').forEach(x=>x.classList.toggle('on',x===b));weights=b.dataset.w;map.closePopup();refresh();showWeights(was!==weights);});
 refresh();
 map.fitBounds(triLayer.getBounds(),{paddingTopLeft:[40,70],paddingBottomRight:[320,40]});
 
