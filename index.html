@@ -687,7 +687,7 @@ function openSvc(){
 <table><tr><th>Tier</th><th>Service level</th><th>Miles</th><th>Cameras ${SPC_L[2]}</th><th>${cap(GR.camera_label)}s on ${PG.route_label}</th><th>Not in public data</th></tr>${tr}
 <tr class="tot">${row(`All of ${PG.route_label}`,feats,'','')}</tr></table>
 ${PG.service_note?`<p>${txt(PG.service_note)}</p>`:''}
-<p class="nt">${cap(GR.camera_label)}s listed on ${PG.route_label} are placed along it at their listed locations, both directions together, and spacing is measured from one camera to the next; a stretch meets the threshold where the cameras on either side are ${SPC_L[2]}. The ${frac(SPC)}-mile threshold is this analysis's, not a Framework figure. Cameras give point views, so meeting it does not by itself meet the Tier 1 service level of continuous lane-level observation. ${srcLine([...new Set((PG.gap_rows||[]).filter(r=>r[0]===GR.camera||r[0]===GR.spacing).map(r=>r[2]))].concat(PG.service_srcs||[]))}</p>`;
+<p class="nt">Spacing is measured from one camera to the next; the Methodology explains how, and why meeting the threshold does not by itself meet Tier 1. ${srcLine([...new Set((PG.gap_rows||[]).filter(r=>r[0]===GR.camera||r[0]===GR.spacing).map(r=>r[2]))].concat(PG.service_srcs||[]))}</p>`;
   document.getElementById('mService').classList.add('on');
 }
 // weight badges in Layers follow the weighting toggle, with a brief highlight so the change is noticed
